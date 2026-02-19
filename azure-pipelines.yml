@@ -6,7 +6,7 @@ trigger:
 variables:
   terraform_env: "dev"
   location: "eastus"
-  acr_name: "devaksacr12345"       # replace with your ACR name
+  acr_name: "patnala1156"                # Azure Container Registry name
   aks_name: "dev-aks"
   rg_name: "dev-aks-rg"
   docker_image: "$(acr_name).azurecr.io/voting-app:v1"
@@ -43,8 +43,11 @@ stages:
           if [ "$RG_EXIST" == "true" ]; then
             echo "## Resource Group exists, deleting it for a clean Terraform run ##"
             az group delete --name $(rg_name) --yes --no-wait
-            echo "Waiting 30 seconds for deletion to start..."
-            sleep 30
+            echo "## Waiting until Resource Group is fully deleted ##"
+            while az group exists --name $(rg_name); do
+              echo "Resource Group still exists, waiting 10s..."
+              sleep 10
+            done
           fi
           echo "## Running Terraform ##"
           cd terraform/env/$(terraform_env)
