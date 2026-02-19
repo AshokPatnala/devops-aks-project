@@ -10,27 +10,41 @@ variables:
 stages:
 
 - stage: Terraform_Validate
-  displayName: Validate Terraform
+  displayName: Terraform Validate
   jobs:
   - job: validate
     steps:
+
+    # Install Terraform
     - task: TerraformInstaller@1
+      displayName: Install Terraform
       inputs:
-        terraformVersion: 'latest'
+        terraformVersion: '1.5.7'
 
-    - script: terraform init
+    # Run Terraform Init
+    - script: |
+        terraform init
       workingDirectory: $(terraformWorkingDir)
+      displayName: Terraform Init
 
-    - script: terraform validate
+    # Run Terraform Validate
+    - script: |
+        terraform validate
       workingDirectory: $(terraformWorkingDir)
+      displayName: Terraform Validate
 
 - stage: Terraform_Plan
   displayName: Terraform Plan
   jobs:
   - job: plan
     steps:
-    - script: terraform init
-      workingDirectory: $(terraformWorkingDir)
 
-    - script: terraform plan
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: '1.5.7'
+
+    - script: |
+        terraform init
+        terraform plan
       workingDirectory: $(terraformWorkingDir)
+      displayName: Terraform Plan
