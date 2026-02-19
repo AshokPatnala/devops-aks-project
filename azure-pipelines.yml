@@ -1,50 +1,82 @@
 trigger:
-- main
-
-pool:
-  vmImage: ubuntu-latest
+  branches:
+    include:
+      - main
 
 variables:
-  terraformWorkingDir: 'terraform/env/dev'
+  terraform_env: "dev"
+  location: "eastus"
+  acr_name: "devaksacr12345"        # replace with your ACR name from Terraform output
+  aks_name: "dev-aks"
+  rg_name: "dev-aks-rg"
+  docker_image: "$(acr_name).azurecr.io/voting-app:v1"
 
 stages:
-
-- stage: Terraform_Validate
-  displayName: Terraform Validate
+- stage: Terraform
+  displayName: "Terraform Infrastructure"
   jobs:
-  - job: validate
+  - job: Terraform
+    displayName: "Terraform Apply"
+    pool:
+      vmImage: 'ubuntu-latest'
     steps:
-
-    # Install Terraform
-    - task: TerraformInstaller@1
-      displayName: Install Terraform
+    - task: AzureCLI@2
+      name: TerraformInit
       inputs:
-        terraformVersion: '1.5.7'
+        azureSubscription: 'azure-connection'   # your Azure service connection
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "## Initializing Terraform ##"
+          cd terraform/env/$(terraform_env)
+          terraform init
+          terraform plan
+          terraform apply -auto-approve
 
-    # Run Terraform Init
-    - script: |
-        terraform init
-      workingDirectory: $(terraformWorkingDir)
-      displayName: Terraform Init
-
-    # Run Terraform Validate
-    - script: |
-        terraform validate
-      workingDirectory: $(terraformWorkingDir)
-      displayName: Terraform Validate
-
-- stage: Terraform_Plan
-  displayName: Terraform Plan
+- stage: BuildPushDocker
+  displayName: "Docker Build & Push"
+  dependsOn: Terraform
   jobs:
-  - job: plan
+  - job: DockerJob
+    displayName: "Build & Push Docker Image"
+    pool:
+      vmImage: 'ubuntu-latest'
     steps:
-
-    - task: TerraformInstaller@1
+    - task: AzureCLI@2
+      name: DockerBuildPush
       inputs:
-        terraformVersion: '1.5.7'
+        azureSubscription: 'azure-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "## Login to Azure Container Registry ##"
+          az acr login --name $(acr_name)
+          echo "## Build Docker Image ##"
+          cd app
+          docker build -t $(docker_image) .
+          echo "## Push Docker Image ##"
+          docker push $(docker_image)
 
-    - script: |
-        terraform init
-        terraform plan
-      workingDirectory: $(terraformWorkingDir)
-      displayName: Terraform Plan
+- stage: DeployHelm
+  displayName: "Deploy to AKS via Helm"
+  dependsOn: BuildPushDocker
+  jobs:
+  - job: HelmDeploy
+    displayName: "Helm Deploy"
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: AzureCLI@2
+      name: HelmDeploy
+      inputs:
+        azureSubscription: 'azure-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "## Get AKS Credentials ##"
+          az aks get-credentials --resource-group $(rg_name) --name $(aks_name) --overwrite-existing
+          echo "## Deploy Helm Chart ##"
+          helm upgrade --install voting-app ./helm/voting-app --set image.repository=$(acr_name).azurecr.io/voting-app --set image.tag=v1
+          echo "## Verify Deployment ##"
+          kubectl get pods
+          kubectl get svc
