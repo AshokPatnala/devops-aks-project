@@ -6,7 +6,7 @@ trigger:
 variables:
   terraform_env: "dev"
   location: "eastus"
-  acr_name: "patnala1156"                # Azure Container Registry name
+  acr_name: "devaksacr12345"                # Azure Container Registry name
   aks_name: "dev-aks"
   rg_name: "dev-aks-rg"
   docker_image: "$(acr_name).azurecr.io/voting-app:v1"
