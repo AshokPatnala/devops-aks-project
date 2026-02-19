@@ -1,0 +1,36 @@
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  terraformWorkingDir: 'terraform/env/dev'
+
+stages:
+
+- stage: Terraform_Validate
+  displayName: Validate Terraform
+  jobs:
+  - job: validate
+    steps:
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 'latest'
+
+    - script: terraform init
+      workingDirectory: $(terraformWorkingDir)
+
+    - script: terraform validate
+      workingDirectory: $(terraformWorkingDir)
+
+- stage: Terraform_Plan
+  displayName: Terraform Plan
+  jobs:
+  - job: plan
+    steps:
+    - script: terraform init
+      workingDirectory: $(terraformWorkingDir)
+
+    - script: terraform plan
+      workingDirectory: $(terraformWorkingDir)
