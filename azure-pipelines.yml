@@ -6,7 +6,7 @@ trigger:
 variables:
   terraform_env: "dev"
   location: "eastus"
-  acr_name: "devaksacr12345"       # replace with your ACR name
+  acr_name: "<your-acr-name>"       # replace with your ACR name
   aks_name: "dev-aks"
   rg_name: "dev-aks-rg"
   docker_image: "$(acr_name).azurecr.io/voting-app:v1"
@@ -30,6 +30,7 @@ stages:
         sudo apt-get install -y terraform
         terraform -version
       displayName: "Install Terraform"
+
     - task: AzureCLI@2
       name: TerraformInit
       inputs:
@@ -37,6 +38,14 @@ stages:
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
+          echo "## Check if Resource Group exists ##"
+          RG_EXIST=$(az group exists --name $(rg_name))
+          if [ "$RG_EXIST" == "true" ]; then
+            echo "## Resource Group exists, deleting it for a clean Terraform run ##"
+            az group delete --name $(rg_name) --yes --no-wait
+            echo "Waiting 30 seconds for deletion to start..."
+            sleep 30
+          fi
           echo "## Running Terraform ##"
           cd terraform/env/$(terraform_env)
           terraform init
