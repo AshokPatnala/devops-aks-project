@@ -6,7 +6,7 @@ trigger:
 variables:
   terraform_env: "dev"
   location: "eastus"
-  acr_name: "devaksacr12345"        # replace with your ACR name
+  acr_name: "devaksacr12345"       # replace with your ACR name
   aks_name: "dev-aks"
   rg_name: "dev-aks-rg"
   docker_image: "$(acr_name).azurecr.io/voting-app:v1"
@@ -20,17 +20,24 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     steps:
-    - task: UseTerraform@0
-      inputs:
-        terraformVersion: '1.6.3'
+    - script: |
+        echo "## Installing Terraform ##"
+        sudo apt-get update -y
+        sudo apt-get install -y gnupg software-properties-common curl unzip
+        curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+        echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+        sudo apt-get update -y
+        sudo apt-get install -y terraform
+        terraform -version
+      displayName: "Install Terraform"
     - task: AzureCLI@2
       name: TerraformInit
       inputs:
-        azureSubscription: 'azure-connection'   # your Azure service connection
+        azureSubscription: 'azure-connection'  # your Azure service connection
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
-          echo "## Initializing Terraform ##"
+          echo "## Running Terraform ##"
           cd terraform/env/$(terraform_env)
           terraform init
           terraform plan
