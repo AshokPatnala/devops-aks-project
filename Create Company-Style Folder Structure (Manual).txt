@@ -1,0 +1,3 @@
+mkdir -p app docker terraform/modules/{resource-group,aks,acr,network} terraform/env/{dev,test,stage} helm/voting-app
+touch azure-pipelines.yml terraform/backend.tf docker/Dockerfile
+    

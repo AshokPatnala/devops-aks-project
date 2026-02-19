@@ -1,0 +1,5 @@
+image:
+  repository: <your-acr-name>.azurecr.io/voting-app
+  tag: v1
+ingress:
+  enabled: false
