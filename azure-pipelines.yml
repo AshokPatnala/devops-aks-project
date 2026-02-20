@@ -34,21 +34,10 @@ stages:
     - task: AzureCLI@2
       name: TerraformInit
       inputs:
-        azureSubscription: 'azure-connection'  # your Azure service connection
+        azureSubscription: 'azure-connection'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
-          echo "## Check if Resource Group exists ##"
-          RG_EXIST=$(az group exists --name $(rg_name))
-          if [ "$RG_EXIST" == "true" ]; then
-            echo "## Resource Group exists, deleting it for a clean Terraform run ##"
-            az group delete --name $(rg_name) --yes --no-wait
-            echo "## Waiting until Resource Group is fully deleted ##"
-            while az group exists --name $(rg_name); do
-              echo "Resource Group still exists, waiting 10s..."
-              sleep 10
-            done
-          fi
           echo "## Running Terraform ##"
           cd terraform/env/$(terraform_env)
           terraform init
